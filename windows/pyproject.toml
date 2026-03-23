@@ -1,0 +1,11 @@
+[project]
+name = "jpegenc-test"
+version = "1.0.0"
+description = "BMP to JPEG conversion test using JPEGENC library"
+requires-python = ">=3.8"
+dependencies = [
+    "pillow",
+]
+
+[project.optional-dependencies]
+dev = []

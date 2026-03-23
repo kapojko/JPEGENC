@@ -21,7 +21,10 @@
 //
 #ifndef __JPEGENC__
 #define __JPEGENC__
-#if defined( MICROPY_PY_SENSOR ) || defined( __MACH__ ) || defined( __LINUX__ ) || defined( __MCUXPRESSO ) || defined( ESP_PLATFORM )
+#if defined( MICROPY_PY_SENSOR ) || defined( __MACH__ ) || defined( __LINUX__ ) || defined( __MCUXPRESSO ) || defined( ESP_PLATFORM ) || \
+    defined( _WIN32 ) || defined( _WIN64 ) || \
+    defined( __linux__ ) || defined( __APPLE__ ) || \
+    defined( __ARM_ARCH ) || defined( __arm__ ) || defined( __aarch64__ )
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -35,7 +38,7 @@
 // JPEG Encoder
 // Written by Larry Bank
 // Copyright (c) 2021 BitBank Software, Inc.
-// 
+//
 // Designed to encode JPEG files from source images (8 or 24 bpp)
 // using less than 20K of RAM
 //
@@ -207,6 +210,7 @@ int JPEGOpenRAM(JPEGE_IMAGE *pJPEG, uint8_t *pData, int iDataSize);
 int JPEGOpenFile(JPEGE_IMAGE *pJPEG, const char *szFilename);
 int JPEGEncodeBegin(JPEGE_IMAGE *pJPEG, JPEGENCODE *pEncode, int iWidth, int iHeight, uint8_t ucPixelType, uint8_t ucSubSample, uint8_t ucQFactor);
 int JPEGEncodeEnd(JPEGE_IMAGE *pJPEG);
+int JPEGAddFrame(JPEGE_IMAGE *pJPEG, JPEGENCODE *pEncode, uint8_t *pPixels, int iPitch);
 int JPEGAddMCU(JPEGE_IMAGE *pJPEG, JPEGENCODE *pEncode, uint8_t *pPixels, int iPitch);
 int JPEGGetLastError(JPEGE_IMAGE *pJPEG);
 #endif // __cplusplus
