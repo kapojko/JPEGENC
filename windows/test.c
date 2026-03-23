@@ -76,17 +76,46 @@ static uint8_t *ReadBMP(const char *fname, int *width, int *height, int *bpp)
     return pBitmap;
 }
 
+void usage(const char *prog) {
+    printf("Usage: %s <infile.bmp> <outfile.jpg> [pixel_type] [subsample]\n", prog);
+    printf("  pixel_type: RGB888 (default), RGB565, ARGB8888\n");
+    printf("  subsample: 420 (default), 444\n");
+}
+
 int main(int argc, const char * argv[])
 {
     int rc, iWidth, iHeight, iBpp, iBytePP, iPitch, iDataSize, iBufSize;
     uint8_t *pBitmap, *pOutput;
-    uint8_t ucPixelType;
+    uint8_t ucPixelType = JPEGE_PIXEL_RGB888;
+    uint8_t ucSubSample = JPEGE_SUBSAMPLE_420;
     JPEGENCODE jpe;
     FILE *outfile;
 
-    if (argc != 3) {
-        printf("Usage: %s <infile.bmp> <outfile.jpg>\n", argv[0]);
+    if (argc < 3 || argc > 5) {
+        usage(argv[0]);
         return 1;
+    }
+
+    if (argc >= 4) {
+        if (strcmp(argv[3], "RGB565") == 0) {
+            ucPixelType = JPEGE_PIXEL_RGB565;
+        } else if (strcmp(argv[3], "ARGB8888") == 0) {
+            ucPixelType = JPEGE_PIXEL_ARGB8888;
+        } else if (strcmp(argv[3], "RGB888") != 0) {
+            printf("Unknown pixel type: %s\n", argv[3]);
+            usage(argv[0]);
+            return 1;
+        }
+    }
+
+    if (argc >= 5) {
+        if (strcmp(argv[4], "444") == 0) {
+            ucSubSample = JPEGE_SUBSAMPLE_444;
+        } else if (strcmp(argv[4], "420") != 0) {
+            printf("Unknown subsample: %s\n", argv[4]);
+            usage(argv[0]);
+            return 1;
+        }
     }
 
     pBitmap = ReadBMP(argv[1], &iWidth, &iHeight, &iBpp);
@@ -95,12 +124,12 @@ int main(int argc, const char * argv[])
         return 1;
     }
 
-    if (iBpp == 24) {
+    if (ucPixelType == JPEGE_PIXEL_RGB565) {
+        iBytePP = 2;
+    } else if (ucPixelType == JPEGE_PIXEL_RGB888) {
         iBytePP = 3;
-        ucPixelType = JPEGE_PIXEL_RGB888;
     } else {
         iBytePP = 4;
-        ucPixelType = JPEGE_PIXEL_ARGB8888;
     }
     iPitch = iBytePP * iWidth;
 
@@ -120,7 +149,7 @@ int main(int argc, const char * argv[])
         return 1;
     }
 
-    rc = JPEGEncodeBegin(&jpeg, &jpe, iWidth, iHeight, ucPixelType, JPEGE_SUBSAMPLE_420, JPEGE_Q_BEST);
+    rc = JPEGEncodeBegin(&jpeg, &jpe, iWidth, iHeight, ucPixelType, ucSubSample, JPEGE_Q_BEST);
     if (rc != JPEGE_SUCCESS) {
         printf("Failed to begin encoding, error: %d\n", rc);
         free(pBitmap);
@@ -137,7 +166,8 @@ int main(int argc, const char * argv[])
     }
 
     iDataSize = JPEGEncodeEnd(&jpeg);
-    printf("Output JPEG file size = %d bytes\n", iDataSize);
+    printf("Output JPEG size = %d bytes (pixel=%s, subsample=%s)\n", 
+           iDataSize, argv[3] ? argv[3] : "RGB888", argv[4] ? argv[4] : "420");
 
     outfile = fopen(argv[2], "wb");
     if (outfile == NULL) {

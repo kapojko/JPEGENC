@@ -30,4 +30,54 @@ int JPEGGetLastError(JPEGE_IMAGE *pJPEG)
     return pJPEG->iError;
 }
 
+#ifdef USE_CMSIS_DSP
+
+#include "arm_math.h"
+
+#ifdef _WIN32
+#define JPEGENC_ALIGN(x) __declspec(align(x))
+#else
+#define JPEGENC_ALIGN(x) __attribute__((aligned(x)))
+#endif
+
+static const q15_t JPEGENC_COEFF_Y[3]  = { 1225,  2404,   467};
+static const q15_t JPEGENC_COEFF_CB[3] = { -691, -1357,  2048};
+static const q15_t JPEGENC_COEFF_CR[3] = { 2048, -1715,  -333};
+
+static inline void jpegenc_cmsis_rgb2ycbcr(uint8_t r, uint8_t g, uint8_t b,
+                                           int16_t *y, int16_t *cb, int16_t *cr)
+{
+    JPEGENC_ALIGN(4) q15_t rgb[3];
+    q63_t acc;
+
+    rgb[0] = (q15_t)r;
+    rgb[1] = (q15_t)g;
+    rgb[2] = (q15_t)b;
+
+    arm_dot_prod_q15(rgb, JPEGENC_COEFF_Y, 3, &acc);
+    *y = (int16_t)((acc >> 12) - 128);
+
+    arm_dot_prod_q15(rgb, JPEGENC_COEFF_CB, 3, &acc);
+    *cb = (int16_t)(acc >> 12);
+
+    arm_dot_prod_q15(rgb, JPEGENC_COEFF_CR, 3, &acc);
+    *cr = (int16_t)(acc >> 12);
+}
+
+static inline int16_t jpegenc_cmsis_chroma_avg4(int16_t v0, int16_t v1, int16_t v2, int16_t v3)
+{
+    JPEGENC_ALIGN(4) q15_t vals[4];
+    q15_t mean;
+
+    vals[0] = v0;
+    vals[1] = v1;
+    vals[2] = v2;
+    vals[3] = v3;
+
+    arm_mean_q15(vals, 4, &mean);
+    return mean;
+}
+
+#endif /* USE_CMSIS_DSP */
+
 #include "jpegenc.inl"

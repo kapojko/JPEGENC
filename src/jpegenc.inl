@@ -1245,6 +1245,42 @@ void JPEGGetMCU(unsigned char *pSrc, int iPitch, signed char *pMCU)
 
 void JPEGSubSample24(unsigned char *pSrc, signed char *pLUM, signed char *pCb, signed char *pCr, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    int16_t iY1, iY2, iY3, iY4, iCr1, iCr2, iCr3, iCr4, iCb1, iCb2, iCb3, iCb4;
+
+    cx = (cx + 1)>>1;
+    cy = (cy + 1)>>1;
+
+    for (y=0; y<cy; y++)
+    {
+        for (x = 0; x<cx; x++)
+        {
+            jpegenc_cmsis_rgb2ycbcr(pSrc[2], pSrc[1], pSrc[0], &iY1, &iCb1, &iCr1);
+            jpegenc_cmsis_rgb2ycbcr(pSrc[5], pSrc[4], pSrc[3], &iY2, &iCb2, &iCr2);
+            jpegenc_cmsis_rgb2ycbcr(pSrc[lsize+2], pSrc[lsize+1], pSrc[lsize], &iY3, &iCb3, &iCr3);
+            jpegenc_cmsis_rgb2ycbcr(pSrc[lsize+5], pSrc[lsize+4], pSrc[lsize+3], &iY4, &iCb4, &iCr4);
+
+            iCr1 = jpegenc_cmsis_chroma_avg4(iCr1, iCr2, iCr3, iCr4);
+            iCb1 = jpegenc_cmsis_chroma_avg4(iCb1, iCb2, iCb3, iCb4);
+
+            pLUM[0] = (signed char)iY1;
+            pLUM[1] = (signed char)iY2;
+            pLUM[8] = (signed char)iY3;
+            pLUM[9] = (signed char)iY4;
+            pLUM += 2;
+            pCr[0] = (signed char)iCr1;
+            pCb[0] = (signed char)iCb1;
+            pCr++;
+            pCb++;
+            pSrc += 6;
+        }
+        pCr += 8 - cx;
+        pCb += 8 - cx;
+        pLUM += 8 + (4-cx)*2;
+        pSrc += lsize*2 - cx*6;
+    }
+#else
     int x;
     unsigned char cRed, cGreen, cBlue;
     int iY1, iY2, iY3, iY4, iCr1, iCr2, iCr3, iCr4, iCb1, iCb2, iCb3, iCb4;
@@ -1306,10 +1342,68 @@ void JPEGSubSample24(unsigned char *pSrc, signed char *pLUM, signed char *pCb, s
         pLUM += 8 + (4-cx)*2; // skip down a row since 2 at a time
         pSrc += lsize*2 - cx*6; // skip 2 lines
     } // for y
-    
+#endif
 } /* JPEGSubSample24() */
 void JPEGSubSample16(unsigned char *pSrc, signed char *pLUM, signed char *pCb, signed char *pCr, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    unsigned short us;
+    unsigned short *pUS = (unsigned short *)pSrc;
+    unsigned char cRed, cGreen, cBlue;
+    int16_t iY1, iY2, iY3, iY4, iCr1, iCr2, iCr3, iCr4, iCb1, iCb2, iCb3, iCb4;
+
+    cx = (cx + 1)>>1;
+    cy = (cy + 1)>>1;
+
+    for (y=0; y<cy; y++)
+    {
+        for (x=0; x<cx; x++)
+        {
+            us = pUS[0];
+            cBlue = (unsigned char)(((us & 0x1f)<<3) | (us & 7));
+            cGreen = (unsigned char)(((us & 0x7e0)>>3) | ((us & 0x60)>>5));
+            cRed = (unsigned char)(((us & 0xf800)>>8) | ((us & 0x3800)>>11));
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY1, &iCb1, &iCr1);
+
+            us = pUS[1];
+            cBlue = (unsigned char)(((us & 0x1f)<<3) | (us & 7));
+            cGreen = (unsigned char)(((us & 0x7e0)>>3) | ((us & 0x60)>>5));
+            cRed = (unsigned char)(((us & 0xf800)>>8) | ((us & 0x3800)>>11));
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY2, &iCb2, &iCr2);
+
+            us = pUS[lsize>>1];
+            cBlue = (unsigned char)(((us & 0x1f)<<3) | (us & 7));
+            cGreen = (unsigned char)(((us & 0x7e0)>>3) | ((us & 0x60)>>5));
+            cRed = (unsigned char)(((us & 0xf800)>>8) | ((us & 0x3800)>>11));
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY3, &iCb3, &iCr3);
+
+            us = pUS[(lsize>>1)+1];
+            cBlue = (unsigned char)(((us & 0x1f)<<3) | (us & 7));
+            cGreen = (unsigned char)(((us & 0x7e0)>>3) | ((us & 0x60)>>5));
+            cRed = (unsigned char)(((us & 0xf800)>>8) | ((us & 0x3800)>>11));
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY4, &iCb4, &iCr4);
+
+            iCr1 = jpegenc_cmsis_chroma_avg4(iCr1, iCr2, iCr3, iCr4);
+            iCb1 = jpegenc_cmsis_chroma_avg4(iCb1, iCb2, iCb3, iCb4);
+
+            pLUM[0] = (signed char)iY1;
+            pLUM[1] = (signed char)iY2;
+            pLUM[8] = (signed char)iY3;
+            pLUM[9] = (signed char)iY4;
+            pLUM += 2;
+            pCr[0] = (signed char)iCr1;
+            pCb[0] = (signed char)iCb1;
+            pCr++;
+            pCb++;
+            pUS += 2;
+        }
+        pCr += 8 - cx;
+        pCb += 8 - cx;
+        pLUM += 8 + (4-cx)*2;
+        pUS += lsize - cx*2;
+    }
+#else
     int x, y;
     unsigned short us;
     unsigned short *pUS = (unsigned short *)pSrc;
@@ -1376,11 +1470,63 @@ void JPEGSubSample16(unsigned char *pSrc, signed char *pLUM, signed char *pCb, s
         pLUM += 8 + (4-cx)*2; // skip down a row since 2 at a time
         pUS += lsize - cx*2; // skip 2 lines
     } // for y
-    
+#endif
 } /* JPEGSubSample16() */
 
 void JPEGSubSample32(unsigned char *pSrc, signed char *pLUM, signed char *pCb, signed char *pCr, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    unsigned char cRed, cGreen, cBlue;
+    int16_t iY1, iY2, iY3, iY4, iCr1, iCr2, iCr3, iCr4, iCb1, iCb2, iCb3, iCb4;
+
+    cx = (cx + 1)>>1;
+    cy = (cy + 1)>>1;
+
+    for (y = 0; y<cy; y++)
+    {
+        for (x=0; x<cx; x++)
+        {
+            cRed = pSrc[0];
+            cGreen = pSrc[1];
+            cBlue = pSrc[2];
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY1, &iCb1, &iCr1);
+
+            cRed = pSrc[4];
+            cGreen = pSrc[5];
+            cBlue = pSrc[6];
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY2, &iCb2, &iCr2);
+
+            cRed = pSrc[lsize+0];
+            cGreen = pSrc[lsize+1];
+            cBlue = pSrc[lsize+2];
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY3, &iCb3, &iCr3);
+
+            cRed = pSrc[lsize+4];
+            cGreen = pSrc[lsize+5];
+            cBlue = pSrc[lsize+6];
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY4, &iCb4, &iCr4);
+
+            iCr1 = jpegenc_cmsis_chroma_avg4(iCr1, iCr2, iCr3, iCr4);
+            iCb1 = jpegenc_cmsis_chroma_avg4(iCb1, iCb2, iCb3, iCb4);
+
+            pLUM[0] = (signed char)iY1;
+            pLUM[1] = (signed char)iY2;
+            pLUM[8] = (signed char)iY3;
+            pLUM[9] = (signed char)iY4;
+            pLUM += 2;
+            pCr[0] = (signed char)iCr1;
+            pCb[0] = (signed char)iCb1;
+            pCr++;
+            pCb++;
+            pSrc += 8;
+        }
+        pCr += 8 - cx;
+        pCb += 8 - cx;
+        pLUM += 8 + (4-cx)*2;
+        pSrc += lsize*2 - cx*8;
+    }
+#else
     int x;
     unsigned char cRed, cGreen, cBlue;
     int iY1, iY2, iY3, iY4, iCr1, iCr2, iCr3, iCr4, iCb1, iCb2, iCb3, iCb4;
@@ -1442,11 +1588,33 @@ void JPEGSubSample32(unsigned char *pSrc, signed char *pLUM, signed char *pCb, s
         pLUM += 8 + (4-cx)*2; // skip down a row since 2 at a time
         pSrc += lsize*2 - cx*8; // skip 2 lines
     } // for y
-
+#endif
 } /* JPEGSubSample32() */
 
 void JPEGSample32(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    unsigned char cRed, cGreen, cBlue;
+    int16_t iY, iCr, iCb;
+
+    for (y=0; y<cy; y++)
+    {
+        for (x=0; x<cx; x++)
+        {
+            cRed = pSrc[0];
+            cGreen = pSrc[1];
+            cBlue = pSrc[2];
+            pSrc += 4;
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY, &iCb, &iCr);
+            pMCU[64]  = (signed char)iCb;
+            pMCU[128]  = (signed char)iCr;
+            *pMCU++ = (signed char)iY;
+        }
+        pMCU += 8 - cx;
+        pSrc += lsize - cx*4;
+    }
+#else
     int x, y;
     unsigned char cRed, cGreen, cBlue;
     int iY, iCr, iCb;
@@ -1471,7 +1639,7 @@ void JPEGSample32(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int
         pMCU += 8 - cx;
         pSrc += lsize - cx*4;
     } // for y
-
+#endif
 } /* JPEGSample32() */
 
 //
@@ -1636,6 +1804,30 @@ void JPEGGetMCU22(unsigned char *pImage, JPEGE_IMAGE *pPage, int iPitch)
  ****************************************************************************/
 void JPEGSample16(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    unsigned short us;
+    unsigned short *pUS = (unsigned short *)pSrc;
+    unsigned char cRed, cGreen, cBlue;
+    int16_t iY, iCr, iCb;
+
+    for (y=0; y<cy; y++)
+    {
+        for (x=0; x<cx; x++)
+        {
+            us = *pUS++;
+            cBlue = (unsigned char)(((us & 0x1f)<<3) | (us & 7));
+            cGreen = (unsigned char)(((us & 0x7e0)>>3) | ((us & 0x60)>>5));
+            cRed = (unsigned char)(((us & 0xf800)>>8) | ((us & 0x3800)>>11));
+            jpegenc_cmsis_rgb2ycbcr(cRed, cGreen, cBlue, &iY, &iCb, &iCr);
+            pMCU[64]  = (signed char)iCb;
+            pMCU[128]  = (signed char)iCr;
+            *pMCU++ = (signed char)iY;
+        }
+        pMCU += 8 - cx;
+        pUS += (lsize>>1) - cx;
+    }
+#else
     int x, y;
     unsigned short us;
     unsigned short *pUS = (unsigned short *)pSrc;
@@ -1662,7 +1854,7 @@ void JPEGSample16(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int
         pMCU += 8 - cx;
         pUS += (lsize>>1) - cx;
     } // for y
-    
+#endif
 } /* JPEGSample16() */
 
 /****************************************************************************
@@ -1674,6 +1866,24 @@ void JPEGSample16(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int
  ****************************************************************************/
 void JPEGSample24(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int cy)
 {
+#ifdef USE_CMSIS_DSP
+    int x, y;
+    int16_t iY, iCr, iCb;
+
+    for (y=0; y<cy; y++)
+    {
+        for (x=0; x<cx; x++)
+        {
+            jpegenc_cmsis_rgb2ycbcr(pSrc[2], pSrc[1], pSrc[0], &iY, &iCb, &iCr);
+            pSrc += 3;
+            pMCU[64]  = (signed char)iCb;
+            pMCU[128]  = (signed char)iCr;
+            *pMCU++ = (signed char)iY;
+        }
+        pMCU += 8 - cx;
+        pSrc += lsize - cx*3;
+    }
+#else
     int x;
     unsigned char cRed, cGreen, cBlue;
     int iY, iCr, iCb;
@@ -1698,7 +1908,7 @@ void JPEGSample24(unsigned char *pSrc, signed char *pMCU, int lsize, int cx, int
         pMCU += 8 - cx;
         pSrc += lsize - cx*3;
     } // for y
-    
+#endif
 } /* JPEGSample24() */
 
 void JPEGGetMCU11(unsigned char *pImage, JPEGE_IMAGE *pPage, int iPitch)
@@ -1951,4 +2161,3 @@ int iBPMCU;
     } // for y
     return rc;
 } /* JPEGAddFrame() */
-

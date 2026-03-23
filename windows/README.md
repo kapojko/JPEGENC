@@ -14,7 +14,7 @@ This directory contains a simple C test program that converts BMP images to JPEG
 ### Prerequisites
 
 - CMake 3.15 or later
-- MSVC compiler (Visual Studio)
+- MSVC compiler (Visual Studio) or MinGW
 - Python 3.x
 - `uv` for Python dependency management
 
@@ -36,6 +36,60 @@ mkdir build
 cd build
 cmake -G "Visual Studio 17 2022" ..
 cmake --build . --config Release
+```
+
+## CMSIS-DSP Integration
+
+The library can use CMSIS-DSP for improved performance. When `CMSIS_DSP_PATH` is set, the build will include CMSIS-DSP headers and link against the CMSIS-DSP library.
+
+### Building CMSIS-DSP (MSVC)
+
+```bash
+git clone https://github.com/ARM-software/CMSIS-DSP.git
+cd CMSIS-DSP
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" .. -DHOST=ON
+cmake --build . --config Release
+```
+
+This produces `CMSIS-DSP\build\Source\Release\CMSISDSP.lib`.
+
+### Building CMSIS-DSP (MinGW)
+
+```bash
+git clone https://github.com/ARM-software/CMSIS-DSP.git
+cd CMSIS-DSP
+mkdir build
+cd build
+cmake -G "MinGW Makefiles" .. -DHOST=ON
+cmake --build . --config Release
+```
+
+### Building with CMSIS-DSP
+
+Set the environment variable before building:
+
+```bash
+# Windows (MSVC)
+set CMSIS_DSP_PATH=D:\Github\CMSIS-DSP
+cd windows
+mkdir build
+cd build
+cmake -G "Visual Studio 17 2022" ..
+cmake --build . --config Release
+```
+
+Or for MinGW:
+
+```bash
+# Windows (MinGW)
+export CMSIS_DSP_PATH=/c/Github/CMSIS-DSP
+cd windows
+mkdir build
+cd build
+cmake -G "MinGW Makefiles" ..
+cmake --build .
 ```
 
 ## Running
