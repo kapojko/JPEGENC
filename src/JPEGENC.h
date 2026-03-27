@@ -42,7 +42,7 @@
 // Designed to encode JPEG files from source images (8 or 24 bpp)
 // using less than 20K of RAM
 //
-#ifndef FALSE
+#if !defined(FALSE) && !defined(JPEGENC_NO_TRUE_FALSE)
 #define FALSE 0
 #define TRUE 1
 #endif
