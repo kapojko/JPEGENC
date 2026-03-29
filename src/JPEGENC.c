@@ -24,6 +24,15 @@ int JPEGOpenRAM(JPEGE_IMAGE *pJPEG, uint8_t *pData, int iDataSize)
     return JPEGE_SUCCESS;
 }
 
+int JPEGOpenCallback(JPEGE_IMAGE *pJPEG, JPEGE_WRITE_CALLBACK *pfnWrite)
+{
+    if (!pJPEG || !pfnWrite) return JPEGE_INVALID_PARAMETER;
+    memset(pJPEG, 0, sizeof(JPEGE_IMAGE));
+    pJPEG->pfnWrite = pfnWrite;
+    pJPEG->pHighWater = &pJPEG->ucFileBuf[JPEGE_FILE_BUF_SIZE - 512];
+    return JPEGE_SUCCESS;
+}
+
 int JPEGGetLastError(JPEGE_IMAGE *pJPEG)
 {
     if (!pJPEG) return JPEGE_INVALID_PARAMETER;

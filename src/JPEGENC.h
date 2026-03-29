@@ -207,6 +207,7 @@ class JPEGENC
 #else
 #define JPEG_STATIC
 int JPEGOpenRAM(JPEGE_IMAGE *pJPEG, uint8_t *pData, int iDataSize);
+int JPEGOpenCallback(JPEGE_IMAGE *pJPEG, JPEGE_WRITE_CALLBACK *pfnWrite);
 int JPEGOpenFile(JPEGE_IMAGE *pJPEG, const char *szFilename);
 int JPEGEncodeBegin(JPEGE_IMAGE *pJPEG, JPEGENCODE *pEncode, int iWidth, int iHeight, uint8_t ucPixelType, uint8_t ucSubSample, uint8_t ucQFactor);
 int JPEGEncodeEnd(JPEGE_IMAGE *pJPEG);
